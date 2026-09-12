@@ -2,44 +2,102 @@
 CarbonTrace AI
 Document Processing Service
 
-Runs the complete document-to-audit workflow.
+Pipeline:
 
 PDF
  ↓
 Text Extraction
  ↓
-Activity Extraction
+AI Activity Extraction
  ↓
-Emission Processing
+Activity Normalization
  ↓
-Audit Records
+Deterministic Emission Processing
+ ↓
+Audit Trail
 """
 
-from backend.services.pdf_ingestion import extract_text_from_pdf
-from backend.services.agent_interface import extract_activities_with_agent
-from backend.services.batch_processor import process_activity_records
+from pathlib import Path
+
+from backend.services.pdf_ingestion import (
+    extract_text_from_pdf
+)
+
+from backend.services.agent_interface import (
+    extract_activities_with_agent,
+    should_use_lyzr,
+)
+
+from backend.services.batch_processor import (
+    process_activity_records
+)
 
 
 def process_document(file_path: str) -> dict:
     """
-    Process a PDF document from start to finish.
-
-    Returns:
-        A dictionary containing the extracted text,
-        number of activities, and audit records.
+    Process an ESG PDF document from start to finish.
     """
 
-    # 1. Extract raw text from PDF
-    text = extract_text_from_pdf(file_path)
+    # -----------------------------------------
+    # 1. Extract text from PDF
+    # -----------------------------------------
 
-    # 2. Extract structured activities
-    activities = extract_activities_with_agent(text)
+    text = extract_text_from_pdf(
+        file_path
+    )
 
-    # 3. Process activities through deterministic pipeline
-    audit_records = process_activity_records(activities)
+
+    # -----------------------------------------
+    # 2. Decide extraction engine
+    # -----------------------------------------
+
+    use_lyzr = should_use_lyzr()
+
+
+    # -----------------------------------------
+    # 3. Extract emission activities
+    # -----------------------------------------
+
+    activities = extract_activities_with_agent(
+        text=text,
+        use_lyzr=use_lyzr,
+    )
+
+
+    # -----------------------------------------
+    # 4. Source document name
+    # -----------------------------------------
+
+    source_document = Path(
+        file_path
+    ).name
+
+
+    # -----------------------------------------
+    # 5. Deterministic processing
+    # -----------------------------------------
+
+    audit_records = process_activity_records(
+        activities,
+        source_document=source_document,
+    )
+
+
+    # -----------------------------------------
+    # 6. Return complete result
+    # -----------------------------------------
 
     return {
         "text": text,
-        "activity_count": len(activities),
-        "audit_records": audit_records,
+
+        "activity_count":
+            len(activities),
+
+        "extraction_engine":
+            "lyzr"
+            if use_lyzr
+            else "local",
+
+        "audit_records":
+            audit_records,
     }

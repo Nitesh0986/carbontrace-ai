@@ -1,26 +1,28 @@
 """
 CarbonTrace AI
 Batch Emission Processor
-
-Connects activity-data ingestion with the
-emission calculation pipeline.
 """
 
 from backend.services.emission_pipeline import process_emission
 from backend.services.audit_logger import create_audit_record
 
 
-def process_activity_records(records: list) -> list:
+def process_activity_records(
+    records: list,
+    source_document: str = "unknown",
+) -> list:
     """
-    Process multiple ActivityRecord objects.
-
-    Each activity is sent through the emission pipeline
-    and an audit record is created.
+    Process multiple ActivityRecord objects
+    and create traceable audit records.
     """
 
     results = []
 
     for record in records:
+
+        # ---------------------------------------------
+        # Deterministic emission processing
+        # ---------------------------------------------
 
         emission_record = process_emission(
             activity=record.activity,
@@ -29,7 +31,14 @@ def process_activity_records(records: list) -> list:
             context=record.context,
         )
 
-        audit_record = create_audit_record(emission_record)
+        # ---------------------------------------------
+        # Create detailed audit record
+        # ---------------------------------------------
+
+        audit_record = create_audit_record(
+            emission_record,
+            source_document=source_document,
+        )
 
         results.append(audit_record)
 

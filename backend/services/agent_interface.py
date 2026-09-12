@@ -2,11 +2,17 @@
 CarbonTrace AI
 Agent Interface
 
-Provides a common interface for AI-based activity extraction.
+Controls whether activity extraction uses:
+- Local deterministic extractor
+- Lyzr AI agent
 
-The default mode remains local/mock until the real Lyzr
-integration is configured.
+The Lyzr agent is responsible only for
+understanding unstructured document text.
+
+It does NOT calculate emissions.
 """
+
+import os
 
 from backend.models.activity import ActivityRecord
 from backend.models.agent_output import ExtractedActivity
@@ -18,21 +24,29 @@ def extract_activities_with_agent(
     use_lyzr: bool = False,
 ) -> list[ActivityRecord]:
     """
-    Extract activities using either:
+    Extract emission activities.
 
-    - Local extractor
-    - Lyzr agent
+    If use_lyzr=True:
+        Use the Lyzr AI agent.
 
-    The result is always converted into ActivityRecord.
+    If use_lyzr=False:
+        Use the local deterministic extractor.
     """
 
+    # -----------------------------------------
+    # Decide whether Lyzr should be used
+    # -----------------------------------------
+
     if use_lyzr:
-        from agents.lyzr_activity_agent import extract_with_lyzr
+
+        from agents.lyzr_activity_agent import (
+            extract_with_lyzr
+        )
 
         extracted = extract_with_lyzr(text)
 
     else:
-        # Temporary local/mock extraction
+
         mock_records = extract_activities(text)
 
         extracted = [
@@ -45,6 +59,12 @@ def extract_activities_with_agent(
             for record in mock_records
         ]
 
+
+    # -----------------------------------------
+    # Convert structured AI output
+    # into our internal ActivityRecord model
+    # -----------------------------------------
+
     return [
         ActivityRecord(
             activity=item.activity,
@@ -54,3 +74,26 @@ def extract_activities_with_agent(
         )
         for item in extracted
     ]
+
+
+def should_use_lyzr() -> bool:
+    """
+    Read the Lyzr activation setting
+    from the environment.
+
+    .env example:
+
+    CARBONTRACE_USE_LYZR=true
+    """
+
+    value = os.getenv(
+        "CARBONTRACE_USE_LYZR",
+        "false",
+    )
+
+    return value.strip().lower() in {
+        "true",
+        "1",
+        "yes",
+        "on",
+    }

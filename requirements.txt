@@ -3,5 +3,7 @@ uvicorn
 python-multipart
 pypdf
 pydantic
+python-dotenv
 lyzr-adk
 pytest
+httpx
