@@ -1,0 +1,5 @@
+activity,quantity,unit,context
+diesel,300,litre,company-owned truck
+electricity,1000,kWh,purchased electricity
+freight,5000,tonne-km,third-party logistics provider
+business_travel,2000,passenger-km,employee business flight

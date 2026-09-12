@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CarbonTrace AI</title>
+
+   <link rel="stylesheet" href="/frontend/style.css">
+</head>
+
+<body>
+
+    <header>
+        <div>
+            <h1>CarbonTrace AI</h1>
+            <p>From business documents to verifiable carbon insights.</p>
+        </div>
+
+        <div class="status">
+            <span></span>
+            API Connected
+        </div>
+    </header>
+
+
+    <main>
+
+        <!-- Upload Section -->
+
+        <section class="upload-card">
+
+            <h2>Upload ESG Document</h2>
+
+            <p>
+                Upload a PDF containing energy, fuel, transportation,
+                or other emission activity data.
+            </p>
+
+            <div class="upload-box">
+
+                <input
+                    type="file"
+                    id="pdfFile"
+                    accept=".pdf"
+                >
+
+                <label for="pdfFile">
+                    📄 Choose PDF
+                </label>
+
+                <p id="fileName">
+                    No file selected
+                </p>
+
+            </div>
+
+            <button id="processBtn">
+                Process Document
+            </button>
+
+            <p id="message"></p>
+
+        </section>
+
+
+        <!-- Dashboard -->
+
+        <section id="dashboard" class="hidden">
+
+            <h2>Carbon Emission Dashboard</h2>
+
+
+            <div class="cards">
+
+                <div class="card total">
+                    <h3>Total Emissions</h3>
+                    <div id="totalEmission">0</div>
+                    <p>kg CO₂e</p>
+                </div>
+
+
+                <div class="card">
+                    <h3>Scope 1</h3>
+                    <div id="scope1">0</div>
+                    <p>kg CO₂e</p>
+                </div>
+
+
+                <div class="card">
+                    <h3>Scope 2</h3>
+                    <div id="scope2">0</div>
+                    <p>kg CO₂e</p>
+                </div>
+
+
+                <div class="card">
+                    <h3>Scope 3</h3>
+                    <div id="scope3">0</div>
+                    <p>kg CO₂e</p>
+                </div>
+
+            </div>
+
+
+            <!-- Emission Records -->
+
+            <div class="panel">
+
+                <h2>Emission Records</h2>
+
+                <div id="records"></div>
+
+            </div>
+
+
+            <!-- Audit Trail -->
+
+            <div class="panel">
+
+                <h2>Audit Trail</h2>
+
+                <div id="audit"></div>
+
+            </div>
+
+
+            <!-- Compliance -->
+
+            <div class="panel compliance">
+
+                <h2>Compliance Checks</h2>
+
+                <div class="warning">
+                    ⚠️ Emission factors should be verified against
+                    the configured authoritative factor source.
+                </div>
+
+                <div class="success">
+                    ✓ CO₂e calculations performed deterministically.
+                </div>
+
+                <div class="success">
+                    ✓ Scope classification performed through
+                    controlled business rules.
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+        <p>
+            CarbonTrace AI · LLM for understanding. Code for truth.
+            Evidence for trust.
+        </p>
+    </footer>
+
+
+    <script src="/frontend/app.js"></script>
+
+</body>
+</html>

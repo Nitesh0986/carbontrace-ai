@@ -1,0 +1,6 @@
+activity,unit,emission_factor,factor_unit,scope
+diesel,litre,2.5,kg CO2e/litre,1
+petrol,litre,2.3,kg CO2e/litre,1
+electricity,kWh,0.5,kg CO2e/kWh,2
+freight,tonne-km,0.1,kg CO2e/tonne-km,3
+business_travel,passenger-km,0.15,kg CO2e/passenger-km,3
