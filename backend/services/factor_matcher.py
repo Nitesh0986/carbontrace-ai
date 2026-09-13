@@ -2,11 +2,10 @@
 CarbonTrace AI
 Emission Factor Matcher
 
-Finds the correct emission factor from the
-controlled emission-factor dataset.
+Finds emission factors from the controlled
+CarbonTrace emission-factor dataset.
 
-The AI may extract the activity and unit,
-but it must NOT invent emission factors.
+The AI must NOT invent emission factors.
 """
 
 import csv
@@ -23,120 +22,113 @@ FACTOR_FILE = (
 def normalize_unit(unit: str) -> str:
     """
     Normalize common unit variations.
-
-    Lyzr may return:
-        litre
-        litres
-        L
-        liters
-        kWh
-        tonne-km
-        passenger-km
-
-    The factor registry uses one canonical form.
     """
 
-    unit = unit.strip().lower()
+    value = unit.strip().lower()
 
-    aliases = {
+    unit_map = {
+        "litre": "litre",
         "litres": "litre",
+        "liter": "litre",
         "liters": "litre",
         "l": "litre",
 
         "kwh": "kWh",
 
-        "tonne kms": "tonne-km",
+        "tonne-km": "tonne-km",
         "tonne km": "tonne-km",
-        "tonne-kms": "tonne-km",
+        "tonnekm": "tonne-km",
 
-        "passenger kms": "passenger-km",
+        "passenger-km": "passenger-km",
         "passenger km": "passenger-km",
-        "passenger-kms": "passenger-km",
+        "passengerkm": "passenger-km",
     }
 
-    return aliases.get(unit, unit)
-
-
-def normalize_activity(activity: str) -> str:
-    """
-    Normalize activity names.
-    """
-
-    activity = activity.strip().lower()
-
-    aliases = {
-        "diesel fuel": "diesel",
-        "petrol fuel": "petrol",
-        "gasoline": "petrol",
-        "electricity consumption": "electricity",
-        "business travel": "business_travel",
-        "business-travel": "business_travel",
-    }
-
-    return aliases.get(activity, activity)
+    return unit_map.get(value, unit)
 
 
 def find_emission_factor(
     activity: str,
-    unit: str
+    unit: str,
 ) -> dict:
     """
-    Find an emission factor using normalized
-    activity and unit values.
+    Find an emission factor using activity and unit.
     """
 
-    activity = normalize_activity(
-        activity
-    )
+    activity = activity.strip().lower()
+    unit = normalize_unit(unit)
 
-    unit = normalize_unit(
-        unit
-    )
+    if not FACTOR_FILE.exists():
+        raise FileNotFoundError(
+            f"Emission factor file not found: {FACTOR_FILE}"
+        )
 
     with open(
         FACTOR_FILE,
         mode="r",
-        encoding="utf-8"
+        encoding="utf-8",
     ) as file:
 
         reader = csv.DictReader(file)
 
         for row in reader:
 
-            registry_activity = normalize_activity(
+            row_activity = (
                 row["activity"]
+                .strip()
+                .lower()
             )
 
-            registry_unit = normalize_unit(
+            row_unit = normalize_unit(
                 row["unit"]
             )
 
             if (
-                registry_activity == activity
-                and registry_unit == unit
+                row_activity == activity
+                and row_unit == unit
             ):
 
                 return {
+                    "activity": row["activity"],
 
-                    "activity":
-                        row["activity"],
+                    "unit": row["unit"],
 
-                    "unit":
-                        row["unit"],
+                    "emission_factor": float(
+                        row["emission_factor"]
+                    ),
 
-                    "emission_factor":
-                        float(
-                            row["emission_factor"]
-                        ),
+                    "factor_unit": row[
+                        "factor_unit"
+                    ],
 
-                    "factor_unit":
-                        row["factor_unit"],
+                    "scope": int(
+                        row["scope"]
+                    ),
 
-                    "scope":
-                        int(
-                            row["scope"]
-                        ),
+                    "factor_source": row.get(
+                        "factor_source",
+                        "Unknown",
+                    ),
 
+                    "factor_year": row.get(
+                        "factor_year",
+                        "",
+                    ),
+
+                    "factor_methodology": row.get(
+                        "factor_methodology",
+                        "",
+                    ),
+
+                    "factor_region": row.get(
+                        "factor_region",
+                        "",
+                    ),
+
+                    "factor_status": row.get(
+                        "factor_status",
+                        "UNKNOWN",
+                    ),
                 }
 
     raise ValueError(

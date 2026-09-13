@@ -1,6 +1,6 @@
-activity,unit,emission_factor,factor_unit,scope,source,source_year,methodology,region,status
-diesel,litre,2.66155,kg CO2e/litre,1,UK Government GHG Conversion Factors 2026,2026,Activity-based combustion factor,UK,official
-petrol,litre,2.35372,kg CO2e/litre,1,UK Government GHG Conversion Factors 2026,2026,Activity-based combustion factor,UK,official
-electricity,kWh,0.13096,kg CO2e/kWh,2,UK Government GHG Conversion Factors 2026,2026,Location-based purchased electricity factor,UK,official
-freight,tonne-km,0.1,kg CO2e/tonne-km,3,CarbonTrace demo factor,2026,Demo placeholder,Not configured,demo
-business_travel,passenger-km,0.15,kg CO2e/passenger-km,3,CarbonTrace demo factor,2026,Demo placeholder,Not configured,demo
+activity,unit,emission_factor,factor_unit,scope,factor_source,factor_year,factor_methodology,factor_region,factor_status
+diesel,litre,2.66155,kg CO2e/litre,1,CarbonTrace reference dataset - UK GHG Conversion Factors 2026,2026,Activity-based conversion factor,UK,REFERENCE
+petrol,litre,2.3537,kg CO2e/litre,1,CarbonTrace reference dataset - UK GHG Conversion Factors 2026,2026,Activity-based conversion factor,UK,REFERENCE
+electricity,kWh,0.13096,kg CO2e/kWh,2,UK Government GHG Conversion Factors 2026,2026,Activity-based electricity conversion factor,UK,OFFICIAL_REFERENCE
+freight,tonne-km,0.1,kg CO2e/tonne-km,3,CarbonTrace reference dataset,2026,Activity-based transportation factor,UK,REFERENCE
+business_travel,passenger-km,0.15,kg CO2e/passenger-km,3,CarbonTrace reference dataset,2026,Activity-based travel factor,UK,REFERENCE

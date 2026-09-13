@@ -22,10 +22,9 @@
 
 <body>
 
-
-    <!-- =====================================
+    <!-- =====================================================
          HEADER
-    ====================================== -->
+    ====================================================== -->
 
     <header>
 
@@ -36,8 +35,7 @@
             </h1>
 
             <p>
-                From business documents to
-                verifiable carbon insights.
+                From business documents to verifiable carbon insights.
             </p>
 
         </div>
@@ -45,9 +43,9 @@
 
         <div class="status">
 
-            <span></span>
-
-            API Connected
+            <span id="health-status">
+                Checking API...
+            </span>
 
         </div>
 
@@ -55,16 +53,16 @@
 
 
 
-    <!-- =====================================
-         MAIN CONTENT
-    ====================================== -->
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
 
     <main>
 
 
-        <!-- =================================
+        <!-- =================================================
              UPLOAD SECTION
-        ================================== -->
+        ================================================== -->
 
         <section class="upload-card">
 
@@ -74,41 +72,93 @@
 
 
             <p>
-                Upload a PDF containing energy,
-                fuel, transportation, or other
-                emission activity data.
+                Upload a PDF or CSV containing energy, fuel,
+                transportation, or other emission activity data.
             </p>
 
+
+
+            <!-- FILE SELECTOR -->
 
             <div class="upload-box">
 
                 <input
                     type="file"
-                    id="pdfFile"
-                    accept=".pdf"
+                    id="document-file-input"
+                    accept=".pdf,.csv,application/pdf,text/csv"
                 >
 
 
-                <label for="pdfFile">
-
-                    📄 Choose PDF
-
+                <label
+                    for="document-file-input"
+                >
+                    📄 Choose PDF / CSV
                 </label>
 
 
-                <p id="fileName">
-
+                <p id="selected-file-name">
                     No file selected
-
                 </p>
 
             </div>
 
 
-            <button id="processBtn">
 
+            <!-- =================================================
+                 UPLOAD PROGRESS
+            ================================================== -->
+
+            <div
+                id="upload-progress-wrapper"
+                style="display: none;"
+            >
+
+                <div
+                    id="upload-progress-bar"
+                    style="
+                        width: 0%;
+                        height: 8px;
+                        border-radius: 10px;
+                    "
+                ></div>
+
+
+                <span id="upload-pct">
+                    0%
+                </span>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 UPLOAD STATUS
+            ================================================== -->
+
+            <p id="upload-status"></p>
+
+
+            <!-- =================================================
+                 PROCESS BUTTON
+            ================================================== -->
+
+            <button
+                id="btn-upload-ingest"
+                type="button"
+            >
                 Process Document
+            </button>
 
+
+            <!-- =================================================
+                 SAMPLE BUTTON
+            ================================================== -->
+
+            <button
+                id="btn-load-sample"
+                type="button"
+            >
+                Load Sample
             </button>
 
 
@@ -118,14 +168,44 @@
 
 
 
-        <!-- =================================
+        <!-- =====================================================
+             LYZR STATUS
+        ====================================================== -->
+
+        <section class="panel">
+
+            <h2>
+                AI Processing Status
+            </h2>
+
+
+            <div id="lyzr-status-pill">
+                ● Lyzr
+            </div>
+
+
+            <div id="lyzr-status-badge">
+                Checking...
+            </div>
+
+
+            <div id="agent-pulse">
+                ●
+            </div>
+
+        </section>
+
+
+
+        <!-- =====================================================
              DASHBOARD
-        ================================== -->
+        ====================================================== -->
 
         <section
             id="dashboard"
             class="hidden"
         >
+
 
             <h2>
                 Carbon Emission Dashboard
@@ -133,14 +213,14 @@
 
 
 
-            <!-- =============================
-                 SUMMARY CARDS
-            ============================== -->
+            <!-- =================================================
+                 KPI CARDS
+            ================================================== -->
 
             <div class="cards">
 
 
-                <!-- Total -->
+                <!-- TOTAL -->
 
                 <div class="card total">
 
@@ -148,9 +228,11 @@
                         Total Emissions
                     </h3>
 
-                    <div id="totalEmission">
+
+                    <div id="kpi-total-co2e">
                         0
                     </div>
+
 
                     <p>
                         kg CO₂e
@@ -160,7 +242,7 @@
 
 
 
-                <!-- Scope 1 -->
+                <!-- SCOPE 1 -->
 
                 <div class="card">
 
@@ -168,9 +250,11 @@
                         Scope 1
                     </h3>
 
-                    <div id="scope1">
+
+                    <div id="kpi-scope1">
                         0
                     </div>
+
 
                     <p>
                         kg CO₂e
@@ -180,7 +264,7 @@
 
 
 
-                <!-- Scope 2 -->
+                <!-- SCOPE 2 -->
 
                 <div class="card">
 
@@ -188,9 +272,11 @@
                         Scope 2
                     </h3>
 
-                    <div id="scope2">
+
+                    <div id="kpi-scope2">
                         0
                     </div>
+
 
                     <p>
                         kg CO₂e
@@ -200,7 +286,7 @@
 
 
 
-                <!-- Scope 3 -->
+                <!-- SCOPE 3 -->
 
                 <div class="card">
 
@@ -208,12 +294,58 @@
                         Scope 3
                     </h3>
 
-                    <div id="scope3">
+
+                    <div id="kpi-scope3">
                         0
                     </div>
 
+
                     <p>
                         kg CO₂e
+                    </p>
+
+                </div>
+
+
+
+                <!-- RECORDS -->
+
+                <div class="card">
+
+                    <h3>
+                        Records Processed
+                    </h3>
+
+
+                    <div id="kpi-records-count">
+                        0
+                    </div>
+
+
+                    <p>
+                        activities
+                    </p>
+
+                </div>
+
+
+
+                <!-- VALIDATION -->
+
+                <div class="card">
+
+                    <h3>
+                        Validation
+                    </h3>
+
+
+                    <div id="kpi-pass-rate">
+                        —
+                    </div>
+
+
+                    <p>
+                        backend result
                     </p>
 
                 </div>
@@ -222,51 +354,199 @@
 
 
 
-            <!-- =================================
-                 EMISSION RECORDS
-            ================================== -->
+            <!-- =================================================
+                 SCOPE DISTRIBUTION
+            ================================================== -->
 
             <div class="panel">
 
                 <h2>
-                    Emission Records
+                    Scope Distribution
                 </h2>
 
 
-                <div id="records">
+                <!-- SCOPE 1 -->
 
-                    <!-- Records inserted by JavaScript -->
+                <div>
 
+                    <strong>
+                        Scope 1
+                    </strong>
+
+
+                    <div
+                        class="progress"
+                        id="dist-scope1-bar"
+                    ></div>
+
+
+                    <span id="dist-scope1-text">
+                        0%
+                    </span>
+
+                </div>
+
+
+
+                <!-- SCOPE 2 -->
+
+                <div>
+
+                    <strong>
+                        Scope 2
+                    </strong>
+
+
+                    <div
+                        class="progress"
+                        id="dist-scope2-bar"
+                    ></div>
+
+
+                    <span id="dist-scope2-text">
+                        0%
+                    </span>
+
+                </div>
+
+
+
+                <!-- SCOPE 3 -->
+
+                <div>
+
+                    <strong>
+                        Scope 3
+                    </strong>
+
+
+                    <div
+                        class="progress"
+                        id="dist-scope3-bar"
+                    ></div>
+
+
+                    <span id="dist-scope3-text">
+                        0%
+                    </span>
+
+                </div>
+
+
+                <div id="distribution-breakdown-list"></div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 DATA QUALITY
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Data Quality
+                </h2>
+
+
+                <p>
+
+                    Data Quality Score:
+
+                    <strong id="data-quality-score">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Primary Data Share:
+
+                    <strong id="metric-primary-share">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <div
+                    class="progress"
+                    id="metric-primary-bar"
+                ></div>
+
+
+                <p>
+
+                    Temporal Correlation:
+
+                    <strong id="metric-temporal-correlation">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <div
+                    class="progress"
+                    id="metric-temporal-bar"
+                ></div>
+
+
+                <p>
+
+                    Geographic Match:
+
+                    <strong id="metric-geo-match">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <div
+                    class="progress"
+                    id="metric-geo-bar"
+                ></div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 DISCLOSURE READINESS
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Disclosure Readiness
+                </h2>
+
+
+                <div id="badge-csrd-points">
+                    CSRD: —
+                </div>
+
+
+                <div id="badge-sec-status">
+                    SEC: —
+                </div>
+
+
+                <div id="badge-ghg-status">
+                    GHG: —
                 </div>
 
             </div>
 
 
 
-            <!-- =================================
-                 AUDIT TRAIL
-            ================================== -->
-
-            <div class="panel">
-
-                <h2>
-                    Audit Trail
-                </h2>
-
-
-                <div id="audit">
-
-                    <!-- Audit records inserted by JavaScript -->
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================
-                 COMPLIANCE
-            ================================== -->
+            <!-- =================================================
+                 COMPLIANCE & GREENWASHING
+            ================================================== -->
 
             <div class="panel compliance">
 
@@ -275,22 +555,311 @@
                 </h2>
 
 
-                <!-- Overall Risk -->
-
                 <div id="riskSummary">
-
-                    <!-- Overall risk inserted by JavaScript -->
-
+                    No assessment yet.
                 </div>
 
-
-                <!-- Individual Findings -->
 
                 <div id="complianceFindings">
+                    No findings yet.
+                </div>
 
-                    <!-- Compliance findings inserted by JavaScript -->
+            </div>
+
+
+
+            <!-- =================================================
+                 VALIDATION CHECKS
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Compliance Validation
+                </h2>
+
+
+                <div id="badge-calc-integrity">
+                    Calculation Integrity: —
+                </div>
+
+
+                <div id="badge-scope-classification">
+                    Scope Classification: —
+                </div>
+
+
+                <div id="badge-factor-traceability">
+                    Factor Traceability: —
+                </div>
+
+
+                <div id="badge-data-completeness">
+                    Data Completeness: —
+                </div>
+
+
+                <div id="badge-greenwash-detection">
+                    Greenwashing Detection: —
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 EMISSION RECORDS
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Emission Records
+                </h2>
+
+
+
+                <!-- SEARCH -->
+
+                <div>
+
+                    <input
+                        type="text"
+                        id="table-search-input"
+                        placeholder="Search emission records..."
+                    >
+
+
+                    <button
+                        id="btn-fetch-emissions"
+                        type="button"
+                    >
+                        Refresh
+                    </button>
 
                 </div>
+
+
+
+                <!-- TABLE -->
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Activity
+                                </th>
+
+                                <th>
+                                    Quantity
+                                </th>
+
+                                <th>
+                                    Unit
+                                </th>
+
+                                <th>
+                                    Scope
+                                </th>
+
+                                <th>
+                                    Emission Factor
+                                </th>
+
+                                <th>
+                                    CO₂e
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody
+                            id="emission-table-body"
+                        >
+
+                            <tr>
+
+                                <td colspan="7">
+                                    No records loaded yet.
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <p id="table-row-count">
+                    0 records
+                </p>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 EMISSION FACTOR EVIDENCE
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Emission Factor Evidence
+                </h2>
+
+
+                <p>
+
+                    Factor Source:
+
+                    <strong id="factor-source">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Factor Year / Version:
+
+                    <strong id="factor-vintage">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Methodology:
+
+                    <strong id="factor-methodology">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Region:
+
+                    <strong id="factor-region">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Factor Value:
+
+                    <strong id="factor-value">
+                        —
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Factor Status:
+
+                    <strong id="factor-status">
+                        —
+                    </strong>
+
+                </p>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 AUDIT TRAIL
+            ================================================== -->
+
+            <div class="panel">
+
+                <h2>
+                    Audit Trail
+                </h2>
+
+
+                <!-- AUDIT ACTIONS -->
+
+                <div>
+
+                    <button
+                        id="btn-trigger-audit"
+                        type="button"
+                    >
+                        Refresh Audit Trail
+                    </button>
+
+
+                    <button
+                        id="btn-export-audit"
+                        type="button"
+                    >
+                        Export Audit
+                    </button>
+
+
+                    <button
+                        id="btn-export-csv"
+                        type="button"
+                    >
+                        Export CSV
+                    </button>
+
+
+                    <button
+                        id="btn-export-pack"
+                        type="button"
+                    >
+                        Export Assurance Pack
+                    </button>
+
+                </div>
+
+
+
+                <!-- AUDIT RECORDS -->
+
+                <div id="audit-trail-container">
+
+                    <p>
+                        No audit records yet.
+                    </p>
+
+                </div>
+
+
+                <!-- Legacy container.
+                     Kept hidden so old JS references
+                     do not break. -->
+
+                <div
+                    id="audit"
+                    style="display:none;"
+                ></div>
 
             </div>
 
@@ -301,32 +870,31 @@
 
 
 
-    <!-- =====================================
+    <!-- =====================================================
          FOOTER
-    ====================================== -->
+    ====================================================== -->
 
     <footer>
 
         <p>
-
             CarbonTrace AI ·
             LLM for understanding.
             Code for truth.
             Evidence for trust.
-
         </p>
 
     </footer>
 
 
 
-    <!-- =====================================
+    <!-- =====================================================
          JAVASCRIPT
-    ====================================== -->
+         
+         IMPORTANT:
+         Only ONE app.js should be loaded.
+    ====================================================== -->
 
-    <script
-        src="/frontend/app.js"
-    ></script>
+    <script src="/frontend/app.js"></script>
 
 
 </body>

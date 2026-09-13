@@ -2,13 +2,12 @@
 CarbonTrace AI
 Emission Calculation Pipeline
 
-Combines:
-1. Scope classification
-2. Emission-factor matching
-3. Deterministic emission calculation
+Pipeline:
 
-The individual services remain responsible for their
-own logic. This module simply orchestrates them.
+1. Classify emission scope
+2. Match emission factor
+3. Calculate CO2e deterministically
+4. Return factor provenance
 """
 
 from backend.services.scope_classifier import classify_scope
@@ -23,31 +22,103 @@ def process_emission(
     context: str,
 ) -> dict:
     """
-    Process an emission activity from start to finish.
+    Process one emission activity.
 
-    Returns a complete emission record.
+    Parameters
+    ----------
+    activity : str
+        Type of activity.
+
+    quantity : float
+        Amount of activity.
+
+    unit : str
+        Unit of activity.
+
+    context : str
+        Context describing the emission source.
+
+    Returns
+    -------
+    dict
+        Complete emission calculation result.
     """
 
-    # Step 1: Determine emission scope
-    scope = classify_scope(activity, context)
+    # --------------------------------------------------
+    # STEP 1: CLASSIFY SCOPE
+    # --------------------------------------------------
 
-    # Step 2: Find the appropriate emission factor
-    factor_data = find_emission_factor(activity, unit)
+    scope = classify_scope(
+        activity,
+        context,
+    )
 
-    # Step 3: Calculate emissions deterministically
+    # --------------------------------------------------
+    # STEP 2: FIND EMISSION FACTOR
+    # --------------------------------------------------
+
+    factor_data = find_emission_factor(
+        activity,
+        unit,
+    )
+
+    # --------------------------------------------------
+    # STEP 3: CALCULATE CO2e
+    # --------------------------------------------------
+
     emissions = calculate_emissions(
         quantity,
         factor_data["emission_factor"],
     )
 
-    # Step 4: Combine everything into one record
+    # --------------------------------------------------
+    # STEP 4: RETURN COMPLETE RESULT
+    # --------------------------------------------------
+
     return {
         "activity": activity,
+
         "quantity": quantity,
+
         "unit": unit,
+
         "context": context,
+
         "scope": scope,
-        "emission_factor": factor_data["emission_factor"],
-        "factor_unit": factor_data["factor_unit"],
+
+        "emission_factor": factor_data[
+            "emission_factor"
+        ],
+
+        "factor_unit": factor_data[
+            "factor_unit"
+        ],
+
         "emissions_kg_co2e": emissions,
+
+        # Factor provenance
+        "factor_source": factor_data.get(
+            "factor_source",
+            "Unknown",
+        ),
+
+        "factor_year": factor_data.get(
+            "factor_year",
+            "",
+        ),
+
+        "factor_methodology": factor_data.get(
+            "factor_methodology",
+            "",
+        ),
+
+        "factor_region": factor_data.get(
+            "factor_region",
+            "",
+        ),
+
+        "factor_status": factor_data.get(
+            "factor_status",
+            "UNKNOWN",
+        ),
     }
