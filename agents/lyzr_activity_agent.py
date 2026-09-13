@@ -12,9 +12,6 @@ Lyzr does NOT:
 - choose emission factors
 - determine final CO2e
 - perform arithmetic
-
-Those operations are handled by deterministic
-Python services.
 """
 
 import os
@@ -22,7 +19,7 @@ import os
 from lyzr import Studio
 
 from backend.models.agent_output import (
-    ExtractedActivities
+    ExtractedActivities,
 )
 
 
@@ -31,30 +28,17 @@ def create_lyzr_agent():
     Create the CarbonTrace AI Lyzr agent.
     """
 
-    api_key = os.getenv(
-        "LYZR_API_KEY"
-    )
+    api_key = os.getenv("LYZR_API_KEY")
 
     if not api_key:
-
         raise ValueError(
             "LYZR_API_KEY environment variable "
             "is not set."
         )
 
-
-    # -----------------------------------------
-    # Create Lyzr Studio client
-    # -----------------------------------------
-
     studio = Studio(
         api_key=api_key
     )
-
-
-    # -----------------------------------------
-    # Create extraction agent
-    # -----------------------------------------
 
     agent = studio.create_agent(
 
@@ -101,7 +85,7 @@ IMPORTANT RULES:
 - If no emission-related activity is found,
   return an empty activities list.
 
-Examples of useful activities:
+Examples:
 
 diesel
 petrol
@@ -109,9 +93,12 @@ electricity
 freight
 business_travel
 
-Return structured data only.
+Return only structured data.
 
-"""
+""",
+
+        response_model=
+            ExtractedActivities,
     )
 
     return agent
@@ -126,11 +113,6 @@ def extract_with_lyzr(
 
     agent = create_lyzr_agent()
 
-
-    # -----------------------------------------
-    # Ask Lyzr for structured output
-    # -----------------------------------------
-
     result = agent.run(
 
         f"""
@@ -138,12 +120,11 @@ Extract every emission-related activity
 from the following ESG document.
 
 DOCUMENT:
-{text}
-""",
 
-        response_format=
-            ExtractedActivities,
+{text}
+"""
     )
 
-
+    # Lyzr returns the Pydantic model directly
+    # when response_model is configured.
     return result.activities

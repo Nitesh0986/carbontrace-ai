@@ -2,14 +2,19 @@
 CarbonTrace AI
 FastAPI Routes
 
-Provides API endpoints for:
+Features:
 
 - Health check
 - Lyzr status
-- PDF upload and processing
-- Emission calculation
-- Audit records
-- Compliance and greenwashing checks
+- PDF ingestion
+- CSV ingestion
+- Deterministic CO2e calculation
+- Scope classification
+- Factor provenance
+- Audit trail
+- Greenwashing detection
+- Data quality scoring
+- Disclosure readiness
 """
 
 from pathlib import Path
@@ -28,13 +33,17 @@ from backend.services.document_processor import (
     process_document
 )
 
+from backend.services.csv_document_processor import (
+    process_csv_document
+)
+
 
 router = APIRouter()
 
 
-# ---------------------------------------------------------
+# =========================================================
 # UPLOAD DIRECTORY
-# ---------------------------------------------------------
+# =========================================================
 
 UPLOAD_DIR = Path(
     "sample_data/uploads"
@@ -46,29 +55,454 @@ UPLOAD_DIR.mkdir(
 )
 
 
-# ---------------------------------------------------------
-# COMPLIANCE CHECKER
-# ---------------------------------------------------------
+# =========================================================
+# GREENWASHING CHECK
+# =========================================================
+
+def detect_greenwashing(
+    records: list,
+    document_text: str,
+) -> dict:
+    """
+    Detect potentially unsupported environmental claims.
+
+    This is a deterministic compliance guardrail.
+
+    Important:
+    The system does not decide that a company is
+    actually fraudulent. It flags claims that require
+    evidence before publication.
+    """
+
+    text = (
+        document_text or ""
+    ).lower()
+
+    claim_patterns = [
+
+        r"\bcarbon\s+neutral\b",
+
+        r"\bnet\s+zero\b",
+
+        r"\bzero\s+emission[s]?\b",
+
+        r"\b100%\s+green\b",
+
+        r"\bfully\s+green\b",
+
+        r"\bemission[-\s]?free\b",
+
+        r"\bclimate\s+positive\b",
+
+    ]
+
+    detected_claims = []
+
+    for pattern in claim_patterns:
+
+        matches = re.findall(
+            pattern,
+            text
+        )
+
+        for match in matches:
+
+            claim = match.strip()
+
+            if claim not in detected_claims:
+
+                detected_claims.append(
+                    claim
+                )
+
+    # ---------------------------------------------
+    # No environmental claim
+    # ---------------------------------------------
+
+    if not detected_claims:
+
+        return {
+
+            "type":
+                "GREENWASHING_CLAIM",
+
+            "status":
+                "PASS",
+
+            "severity":
+                "LOW",
+
+            "decision":
+                "ALLOWED",
+
+            "message": (
+                "No high-risk environmental "
+                "marketing claim was detected."
+            ),
+
+            "claims":
+                [],
+
+        }
+
+    # ---------------------------------------------
+    # Claim exists
+    # ---------------------------------------------
+
+    has_activity_evidence = (
+        len(records) > 0
+    )
+
+    has_factor_evidence = all(
+        record.get("emission_factor") is not None
+        and record.get("factor_source")
+        for record in records
+    )
+
+    # A strong claim without supporting
+    # quantified evidence is blocked.
+    if not has_activity_evidence:
+
+        return {
+
+            "type":
+                "GREENWASHING_CLAIM",
+
+            "status":
+                "BLOCKED",
+
+            "severity":
+                "HIGH",
+
+            "decision":
+                "BLOCKED",
+
+            "message": (
+                "Environmental claim detected, "
+                "but no quantified emission evidence "
+                "was found in the supplied document."
+            ),
+
+            "claims":
+                detected_claims,
+
+        }
+
+    if not has_factor_evidence:
+
+        return {
+
+            "type":
+                "GREENWASHING_CLAIM",
+
+            "status":
+                "BLOCKED",
+
+            "severity":
+                "HIGH",
+
+            "decision":
+                "BLOCKED",
+
+            "message": (
+                "Environmental claim detected, "
+                "but supporting emission-factor "
+                "evidence is incomplete."
+            ),
+
+            "claims":
+                detected_claims,
+
+        }
+
+    # Evidence exists, but human review
+    # is still required before publication.
+    return {
+
+        "type":
+            "GREENWASHING_CLAIM",
+
+        "status":
+            "REVIEW",
+
+        "severity":
+            "MEDIUM",
+
+        "decision":
+            "REVIEW_REQUIRED",
+
+        "message": (
+            "Environmental claim detected. "
+            "Quantified emission evidence exists, "
+            "but the claim should still be reviewed "
+            "before publication."
+        ),
+
+        "claims":
+            detected_claims,
+
+    }
+
+
+# =========================================================
+# DATA QUALITY SCORE
+# =========================================================
+
+def calculate_data_quality(
+    records: list,
+) -> dict:
+    """
+    Calculate a deterministic data-quality score.
+
+    Checks:
+
+    - Activity
+    - Quantity
+    - Unit
+    - Context
+    - Scope
+    - Emission factor
+    - Factor source
+    - Calculation validation
+    """
+
+    if not records:
+
+        return {
+
+            "score": 0,
+
+            "grade": "FAIL",
+
+            "checks": {
+
+                "activity": False,
+
+                "quantity": False,
+
+                "unit": False,
+
+                "context": False,
+
+                "scope": False,
+
+                "emission_factor": False,
+
+                "factor_source": False,
+
+                "calculation_validation": False,
+
+            },
+
+        }
+
+    total_points = 0
+    earned_points = 0
+
+    check_names = [
+
+        "activity",
+        "quantity",
+        "unit",
+        "context",
+        "scope",
+        "emission_factor",
+        "factor_source",
+        "calculation_validation",
+
+    ]
+
+    checks = {}
+
+    for record in records:
+
+        record_checks = {
+
+            "activity":
+                bool(
+                    record.get("activity")
+                ),
+
+            "quantity":
+                record.get("quantity") is not None
+                and record.get("quantity") >= 0,
+
+            "unit":
+                bool(
+                    record.get("unit")
+                ),
+
+            "context":
+                bool(
+                    record.get("context")
+                ),
+
+            "scope":
+                record.get("scope")
+                in {1, 2, 3},
+
+            "emission_factor":
+                record.get(
+                    "emission_factor"
+                ) is not None,
+
+            "factor_source":
+                bool(
+                    record.get(
+                        "factor_source"
+                    )
+                ),
+
+            "calculation_validation":
+                record.get(
+                    "validation_status"
+                ) == "PASS",
+
+        }
+
+        for name in check_names:
+
+            total_points += 1
+
+            if record_checks[name]:
+
+                earned_points += 1
+
+        # Aggregate check:
+        # true only if every record passes.
+        for name in check_names:
+
+            previous = checks.get(
+                name,
+                True
+            )
+
+            checks[name] = (
+                previous
+                and record_checks[name]
+            )
+
+    score = round(
+        (
+            earned_points
+            / total_points
+        ) * 100
+    )
+
+    if score >= 90:
+
+        grade = "EXCELLENT"
+
+    elif score >= 75:
+
+        grade = "GOOD"
+
+    elif score >= 50:
+
+        grade = "REVIEW"
+
+    else:
+
+        grade = "FAIL"
+
+    return {
+
+        "score":
+            score,
+
+        "grade":
+            grade,
+
+        "checks":
+            checks,
+
+    }
+
+
+# =========================================================
+# FACTOR EVIDENCE SUMMARY
+# =========================================================
+
+def build_factor_evidence(
+    records: list,
+) -> list:
+    """
+    Build judge-friendly factor evidence records.
+    """
+
+    evidence = []
+
+    for record in records:
+
+        evidence.append({
+
+            "activity":
+                record.get(
+                    "activity"
+                ),
+
+            "factor":
+                record.get(
+                    "emission_factor"
+                ),
+
+            "factor_unit":
+                record.get(
+                    "factor_unit"
+                ),
+
+            "scope":
+                record.get(
+                    "scope"
+                ),
+
+            "source":
+                record.get(
+                    "factor_source",
+                    "Unknown"
+                ),
+
+            "year":
+                record.get(
+                    "factor_year"
+                ),
+
+            "methodology":
+                record.get(
+                    "factor_methodology",
+                    "Unknown"
+                ),
+
+            "region":
+                record.get(
+                    "factor_region",
+                    "Unknown"
+                ),
+
+            "status":
+                record.get(
+                    "factor_status",
+                    "unknown"
+                ),
+
+        })
+
+    return evidence
+
+
+# =========================================================
+# COMPLIANCE ENGINE
+# =========================================================
 
 def build_compliance_results(
     records: list,
     document_text: str,
 ) -> dict:
     """
-    Build compliance and greenwashing findings.
-
-    Important:
-
-    - Calculations remain deterministic.
-    - Scope classification remains controlled
-      by Python rules.
-    - Emission factors come from the configured
-      factor dataset.
-    - AI is not allowed to invent numerical results.
+    Build complete compliance results.
     """
 
     findings = []
-
 
     # -----------------------------------------------------
     # 1. Calculation integrity
@@ -83,17 +517,17 @@ def build_compliance_results(
             * record["emission_factor"]
         )
 
-        actual = record[
-            "emissions_kg_co2e"
-        ]
+        actual = (
+            record["emissions_kg_co2e"]
+        )
 
         if abs(
             expected - actual
         ) > 0.000001:
 
             calculation_valid = False
-            break
 
+            break
 
     if calculation_valid:
 
@@ -130,317 +564,201 @@ def build_compliance_results(
                 "HIGH",
 
             "message": (
-                "One or more emission calculations "
-                "do not match the configured "
-                "calculation formula."
+                "One or more calculations do not "
+                "match the deterministic formula."
             ),
 
         })
-
 
     # -----------------------------------------------------
     # 2. Scope validation
     # -----------------------------------------------------
 
-    valid_scopes = {
-        1,
-        2,
-        3,
-    }
-
     scopes_valid = all(
 
-        record["scope"]
-        in valid_scopes
+        record.get("scope")
+        in {1, 2, 3}
 
         for record in records
 
     )
 
+    findings.append({
 
-    if scopes_valid:
+        "type":
+            "SCOPE_CLASSIFICATION",
 
-        findings.append({
+        "status":
+            "PASS"
+            if scopes_valid
+            else "FAIL",
 
-            "type":
-                "SCOPE_CLASSIFICATION",
+        "severity":
+            "LOW"
+            if scopes_valid
+            else "HIGH",
 
-            "status":
-                "PASS",
+        "message": (
 
-            "severity":
-                "LOW",
+            "All activities have valid "
+            "Scope 1, 2 or 3 classifications."
 
-            "message": (
-                "All emission activities were assigned "
-                "to valid Scope 1, Scope 2, or Scope 3 "
-                "categories using controlled business rules."
-            ),
+            if scopes_valid
 
-        })
+            else
 
-    else:
+            "One or more activities have "
+            "an invalid emission scope."
 
-        findings.append({
+        ),
 
-            "type":
-                "SCOPE_CLASSIFICATION",
-
-            "status":
-                "FAIL",
-
-            "severity":
-                "HIGH",
-
-            "message": (
-                "One or more activities have an invalid "
-                "emission scope."
-            ),
-
-        })
-
+    })
 
     # -----------------------------------------------------
-    # 3. Emission factor traceability
+    # 3. Factor traceability
     # -----------------------------------------------------
 
-    factors_available = all(
+    factor_traceable = all(
 
         record.get(
             "emission_factor"
         ) is not None
 
+        and record.get(
+            "factor_source"
+        )
+
         for record in records
 
     )
 
+    findings.append({
 
-    if factors_available:
+        "type":
+            "EMISSION_FACTOR_TRACEABILITY",
 
-        findings.append({
+        "status":
+            "PASS"
+            if factor_traceable
+            else "FAIL",
 
-            "type":
-                "EMISSION_FACTOR_TRACEABILITY",
+        "severity":
+            "LOW"
+            if factor_traceable
+            else "HIGH",
 
-            "status":
-                "PASS",
+        "message": (
 
-            "severity":
-                "LOW",
+            "Every emission calculation has "
+            "factor provenance."
 
-            "message": (
-                "Every calculated activity has a configured "
-                "emission factor and factor unit."
-            ),
+            if factor_traceable
 
-        })
+            else
 
-    else:
+            "One or more calculations lack "
+            "factor provenance."
 
-        findings.append({
+        ),
 
-            "type":
-                "EMISSION_FACTOR_TRACEABILITY",
-
-            "status":
-                "FAIL",
-
-            "severity":
-                "HIGH",
-
-            "message": (
-                "One or more activities are missing "
-                "an emission factor."
-            ),
-
-        })
-
+    })
 
     # -----------------------------------------------------
-    # 4. Missing activity data
+    # 4. Data completeness
     # -----------------------------------------------------
 
-    if len(records) == 0:
+    data_complete = (
+        len(records) > 0
+    )
 
-        findings.append({
+    findings.append({
 
-            "type":
-                "DATA_COMPLETENESS",
+        "type":
+            "DATA_COMPLETENESS",
 
-            "status":
-                "FAIL",
+        "status":
+            "PASS"
+            if data_complete
+            else "FAIL",
 
-            "severity":
-                "HIGH",
+        "severity":
+            "LOW"
+            if data_complete
+            else "HIGH",
 
-            "message": (
-                "No emission activities were detected "
-                "in the uploaded document."
-            ),
+        "message": (
 
-        })
+            f"{len(records)} emission activity "
+            "record(s) were processed."
 
-    else:
+            if data_complete
 
-        findings.append({
+            else
 
-            "type":
-                "DATA_COMPLETENESS",
+            "No emission activities were detected."
 
-            "status":
-                "PASS",
+        ),
 
-            "severity":
-                "LOW",
-
-            "message": (
-                f"{len(records)} emission activity "
-                "record(s) were successfully extracted "
-                "and processed."
-            ),
-
-        })
-
+    })
 
     # -----------------------------------------------------
-    # 5. Greenwashing claim detection
+    # 5. Greenwashing
     # -----------------------------------------------------
 
-    text = (
-        document_text or ""
-    ).lower()
+    greenwashing = detect_greenwashing(
+        records,
+        document_text,
+    )
 
-
-    claim_patterns = [
-
-        r"\bcarbon\s+neutral\b",
-
-        r"\bnet\s+zero\b",
-
-        r"\bzero\s+emission[s]?\b",
-
-        r"\b100%\s+green\b",
-
-        r"\bfully\s+green\b",
-
-        r"\bemission[-\s]?free\b",
-
-    ]
-
-
-    detected_claims = []
-
-
-    for pattern in claim_patterns:
-
-        matches = re.findall(
-            pattern,
-            text
-        )
-
-
-        for match in matches:
-
-            clean_match = (
-                match.strip()
-            )
-
-
-            if clean_match not in detected_claims:
-
-                detected_claims.append(
-                    clean_match
-                )
-
-
-    if detected_claims:
-
-        findings.append({
-
-            "type":
-                "GREENWASHING_CLAIM",
-
-            "status":
-                "REVIEW",
-
-            "severity":
-                "MEDIUM",
-
-            "message": (
-                "Environmental claims were detected "
-                "in the document. These claims should "
-                "be supported by verifiable evidence "
-                "before being presented as compliance "
-                "or sustainability statements."
-            ),
-
-            "claims":
-                detected_claims,
-
-            "activities":
-                [],
-
-        })
-
-    else:
-
-        findings.append({
-
-            "type":
-                "GREENWASHING_CLAIM",
-
-            "status":
-                "PASS",
-
-            "severity":
-                "LOW",
-
-            "message": (
-                "No common high-risk environmental "
-                "marketing claims were detected "
-                "in the uploaded document."
-            ),
-
-            "claims":
-                [],
-
-            "activities":
-                [],
-
-        })
-
+    findings.append(
+        greenwashing
+    )
 
     # -----------------------------------------------------
-    # Overall risk
+    # 6. Overall risk
     # -----------------------------------------------------
+
+    blocked = any(
+
+        finding.get("status")
+        == "BLOCKED"
+
+        for finding in findings
+
+    )
 
     high_risk = any(
 
-        finding["severity"] == "HIGH"
+        finding.get("severity")
+        == "HIGH"
 
         and
 
-        finding["status"] == "FAIL"
+        finding.get("status")
+        == "FAIL"
 
         for finding in findings
 
     )
-
 
     medium_risk = any(
 
-        finding["severity"] == "MEDIUM"
+        finding.get("severity")
+        == "MEDIUM"
 
         and
 
-        finding["status"] == "REVIEW"
+        finding.get("status")
+        in {
+            "REVIEW",
+            "BLOCKED",
+        }
 
         for finding in findings
 
     )
 
-
-    if high_risk:
+    if blocked or high_risk:
 
         overall_risk = "HIGH"
 
@@ -451,7 +769,6 @@ def build_compliance_results(
     else:
 
         overall_risk = "LOW"
-
 
     return {
 
@@ -464,15 +781,119 @@ def build_compliance_results(
     }
 
 
-# ---------------------------------------------------------
-# HEALTH CHECK
-# ---------------------------------------------------------
+# =========================================================
+# DISCLOSURE READINESS
+# =========================================================
+
+def build_disclosure_readiness(
+    records: list,
+    compliance: dict,
+    quality: dict,
+) -> dict:
+    """
+    Build a structured disclosure-readiness summary.
+
+    This is NOT a legal certification.
+
+    It is a review-support layer.
+    """
+
+    scope_1 = sum(
+
+        record[
+            "emissions_kg_co2e"
+        ]
+
+        for record in records
+
+        if record.get("scope") == 1
+
+    )
+
+    scope_2 = sum(
+
+        record[
+            "emissions_kg_co2e"
+        ]
+
+        for record in records
+
+        if record.get("scope") == 2
+
+    )
+
+    scope_3 = sum(
+
+        record[
+            "emissions_kg_co2e"
+        ]
+
+        for record in records
+
+        if record.get("scope") == 3
+
+    )
+
+    total = (
+        scope_1
+        + scope_2
+        + scope_3
+    )
+
+    risk = compliance[
+        "overall_risk"
+    ]
+
+    ready = (
+
+        len(records) > 0
+
+        and quality["score"] >= 75
+
+        and risk == "LOW"
+
+    )
+
+    return {
+
+        "status":
+            "READY_FOR_REVIEW"
+            if ready
+            else "REVIEW_REQUIRED",
+
+        "scope_1_kg_co2e":
+            scope_1,
+
+        "scope_2_kg_co2e":
+            scope_2,
+
+        "scope_3_kg_co2e":
+            scope_3,
+
+        "total_kg_co2e":
+            total,
+
+        "data_quality_score":
+            quality["score"],
+
+        "compliance_risk":
+            risk,
+
+        "legal_disclaimer": (
+            "Disclosure-readiness support only. "
+            "Final CSRD/SEC reporting decisions "
+            "require appropriate human and professional review."
+        ),
+
+    }
+
+
+# =========================================================
+# HEALTH
+# =========================================================
 
 @router.get("/health")
 def health_check():
-    """
-    Check whether the CarbonTrace API is running.
-    """
 
     return {
 
@@ -485,38 +906,36 @@ def health_check():
     }
 
 
-# ---------------------------------------------------------
+# =========================================================
 # LYZR STATUS
-# ---------------------------------------------------------
+# =========================================================
 
 @router.get("/lyzr-status")
 def lyzr_status():
-    """
-    Check whether Lyzr is configured and enabled.
-
-    This endpoint does NOT expose the API key.
-    """
 
     api_key_configured = bool(
-        os.getenv("LYZR_API_KEY")
+        os.getenv(
+            "LYZR_API_KEY"
+        )
     )
 
-
     lyzr_enabled = (
+
         os.getenv(
             "CARBONTRACE_USE_LYZR",
             "false"
         )
         .strip()
         .lower()
+
         in {
             "true",
             "1",
             "yes",
             "on",
         }
-    )
 
+    )
 
     if (
         api_key_configured
@@ -527,16 +946,19 @@ def lyzr_status():
 
     elif api_key_configured:
 
-        status = "CONFIGURED_BUT_DISABLED"
+        status = (
+            "CONFIGURED_BUT_DISABLED"
+        )
 
     elif lyzr_enabled:
 
-        status = "ENABLED_BUT_KEY_MISSING"
+        status = (
+            "ENABLED_BUT_KEY_MISSING"
+        )
 
     else:
 
         status = "NOT_CONFIGURED"
-
 
     return {
 
@@ -552,124 +974,17 @@ def lyzr_status():
     }
 
 
-# ---------------------------------------------------------
-# PDF UPLOAD + PROCESSING
-# ---------------------------------------------------------
-
-@router.post("/upload")
-async def upload_pdf(
-    file: UploadFile = File(...)
-):
-    """
-    Upload a PDF and process its emission data.
-    """
-
-    if not file.filename:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required.",
-        )
-
-
-    if not file.filename.lower().endswith(
-        ".pdf"
-    ):
-
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are supported.",
-        )
-
-
-    file_path = (
-        UPLOAD_DIR /
-        file.filename
-    )
-
-
-    try:
-
-        # -----------------------------------------
-        # Save uploaded PDF
-        # -----------------------------------------
-
-        with open(
-            file_path,
-            "wb"
-        ) as buffer:
-
-            shutil.copyfileobj(
-                file.file,
-                buffer
-            )
-
-
-        # -----------------------------------------
-        # Process document
-        # -----------------------------------------
-
-        result = process_document(
-            str(file_path)
-        )
-
-
-        return {
-
-            "success":
-                True,
-
-            "filename":
-                file.filename,
-
-            "activity_count":
-                result[
-                    "activity_count"
-                ],
-
-            "extraction_engine":
-                result.get(
-                    "extraction_engine",
-                    "unknown"
-                ),
-
-            "audit_records":
-                result[
-                    "audit_records"
-                ],
-
-        }
-
-
-    except Exception as error:
-
-        raise HTTPException(
-
-            status_code=500,
-
-            detail=str(error),
-
-        )
-
-
-# ---------------------------------------------------------
-# EMISSIONS SUMMARY
-# ---------------------------------------------------------
+# =========================================================
+# MAIN PROCESSING ENDPOINT
+# PDF + CSV
+# =========================================================
 
 @router.post("/emissions")
-async def calculate_emissions_from_pdf(
+async def calculate_emissions(
     file: UploadFile = File(...)
 ):
     """
-    Upload a PDF and return:
-
-    - Total emissions
-    - Scope 1
-    - Scope 2
-    - Scope 3
-    - Emission records
-    - Compliance findings
-    - Extraction engine
+    Process PDF or CSV emission data.
     """
 
     if not file.filename:
@@ -679,22 +994,33 @@ async def calculate_emissions_from_pdf(
             detail="Filename is required.",
         )
 
-
-    if not file.filename.lower().endswith(
-        ".pdf"
-    ):
-
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are supported.",
-        )
-
-
-    file_path = (
-        UPLOAD_DIR /
+    filename = (
         file.filename
+        .lower()
     )
 
+    supported = (
+        filename.endswith(".pdf")
+        or filename.endswith(".csv")
+    )
+
+    if not supported:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=(
+                "Only PDF and CSV files "
+                "are supported."
+            ),
+
+        )
+
+    file_path = (
+        UPLOAD_DIR
+        / file.filename
+    )
 
     try:
 
@@ -712,23 +1038,28 @@ async def calculate_emissions_from_pdf(
                 buffer
             )
 
-
         # -------------------------------------------------
-        # Process document
+        # Process according to file type
         # -------------------------------------------------
 
-        result = process_document(
-            str(file_path)
-        )
+        if filename.endswith(".pdf"):
 
+            result = process_document(
+                str(file_path)
+            )
+
+        else:
+
+            result = process_csv_document(
+                str(file_path)
+            )
 
         records = result[
             "audit_records"
         ]
 
-
         # -------------------------------------------------
-        # Scope calculations
+        # Scope totals
         # -------------------------------------------------
 
         scope_1 = sum(
@@ -739,12 +1070,9 @@ async def calculate_emissions_from_pdf(
 
             for record in records
 
-            if record[
-                "scope"
-            ] == 1
+            if record.get("scope") == 1
 
         )
-
 
         scope_2 = sum(
 
@@ -754,12 +1082,9 @@ async def calculate_emissions_from_pdf(
 
             for record in records
 
-            if record[
-                "scope"
-            ] == 2
+            if record.get("scope") == 2
 
         )
-
 
         scope_3 = sum(
 
@@ -769,25 +1094,15 @@ async def calculate_emissions_from_pdf(
 
             for record in records
 
-            if record[
-                "scope"
-            ] == 3
+            if record.get("scope") == 3
 
         )
 
-
-        # -------------------------------------------------
-        # Total emissions
-        # -------------------------------------------------
-
         total = (
-
             scope_1
             + scope_2
             + scope_3
-
         )
-
 
         # -------------------------------------------------
         # Compliance
@@ -798,16 +1113,52 @@ async def calculate_emissions_from_pdf(
 
                 records,
 
-                result[
-                    "text"
-                ],
+                result.get(
+                    "text",
+                    ""
+                ),
 
             )
         )
 
+        # -------------------------------------------------
+        # Data quality
+        # -------------------------------------------------
+
+        quality = (
+            calculate_data_quality(
+                records
+            )
+        )
 
         # -------------------------------------------------
-        # Final API response
+        # Factor evidence
+        # -------------------------------------------------
+
+        factor_evidence = (
+            build_factor_evidence(
+                records
+            )
+        )
+
+        # -------------------------------------------------
+        # Disclosure readiness
+        # -------------------------------------------------
+
+        disclosure = (
+            build_disclosure_readiness(
+
+                records,
+
+                compliance,
+
+                quality,
+
+            )
+        )
+
+        # -------------------------------------------------
+        # Return complete response
         # -------------------------------------------------
 
         return {
@@ -818,11 +1169,21 @@ async def calculate_emissions_from_pdf(
             "filename":
                 file.filename,
 
+            "file_type":
+                "pdf"
+                if filename.endswith(".pdf")
+                else "csv",
+
             "extraction_engine":
                 result.get(
                     "extraction_engine",
                     "unknown"
                 ),
+
+            "activity_count":
+                result[
+                    "activity_count"
+                ],
 
             "total_kg_co2e":
                 total,
@@ -839,11 +1200,19 @@ async def calculate_emissions_from_pdf(
             "records":
                 records,
 
+            "factor_evidence":
+                factor_evidence,
+
             "compliance":
                 compliance,
 
-        }
+            "data_quality":
+                quality,
 
+            "disclosure_readiness":
+                disclosure,
+
+        }
 
     except Exception as error:
 
@@ -856,17 +1225,14 @@ async def calculate_emissions_from_pdf(
         )
 
 
-# ---------------------------------------------------------
-# AUDIT TRAIL
-# ---------------------------------------------------------
+# =========================================================
+# SIMPLE UPLOAD ENDPOINT
+# =========================================================
 
-@router.post("/audit")
-async def get_audit_trail(
+@router.post("/upload")
+async def upload_document(
     file: UploadFile = File(...)
 ):
-    """
-    Upload a PDF and return complete audit records.
-    """
 
     if not file.filename:
 
@@ -875,28 +1241,32 @@ async def get_audit_trail(
             detail="Filename is required.",
         )
 
+    filename = (
+        file.filename.lower()
+    )
 
-    if not file.filename.lower().endswith(
-        ".pdf"
+    if not (
+        filename.endswith(".pdf")
+        or filename.endswith(".csv")
     ):
 
         raise HTTPException(
+
             status_code=400,
-            detail="Only PDF files are supported.",
+
+            detail=(
+                "Only PDF and CSV files "
+                "are supported."
+            ),
+
         )
 
-
     file_path = (
-        UPLOAD_DIR /
-        file.filename
+        UPLOAD_DIR
+        / file.filename
     )
 
-
     try:
-
-        # -----------------------------------------
-        # Save PDF
-        # -----------------------------------------
 
         with open(
             file_path,
@@ -908,15 +1278,102 @@ async def get_audit_trail(
                 buffer
             )
 
+        if filename.endswith(".pdf"):
 
-        # -----------------------------------------
-        # Process document
-        # -----------------------------------------
+            result = process_document(
+                str(file_path)
+            )
+
+        else:
+
+            result = process_csv_document(
+                str(file_path)
+            )
+
+        return {
+
+            "success":
+                True,
+
+            "filename":
+                file.filename,
+
+            "activity_count":
+                result[
+                    "activity_count"
+                ],
+
+            "extraction_engine":
+                result.get(
+                    "extraction_engine"
+                ),
+
+            "audit_records":
+                result[
+                    "audit_records"
+                ],
+
+        }
+
+    except Exception as error:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=str(error),
+
+        )
+
+
+# =========================================================
+# AUDIT ENDPOINT
+# =========================================================
+
+@router.post("/audit")
+async def get_audit_trail(
+    file: UploadFile = File(...)
+):
+
+    if not file.filename:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Filename is required.",
+        )
+
+    if not file.filename.lower().endswith(
+        ".pdf"
+    ):
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Only PDF files are supported.",
+
+        )
+
+    file_path = (
+        UPLOAD_DIR
+        / file.filename
+    )
+
+    try:
+
+        with open(
+            file_path,
+            "wb"
+        ) as buffer:
+
+            shutil.copyfileobj(
+                file.file,
+                buffer
+            )
 
         result = process_document(
             str(file_path)
         )
-
 
         return {
 
@@ -938,7 +1395,6 @@ async def get_audit_trail(
                 ],
 
         }
-
 
     except Exception as error:
 
